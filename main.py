@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import requests
 import openai
 from supabase import create_client, Client
 
@@ -10,17 +11,42 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
+# Roam Research API 參數
+ROAM_API_BASE_URL = os.getenv("ROAM_API_BASE_URL")
+ROAM_API_GRAPH = os.getenv("ROAM_API_GRAPH")
+ROAM_API_KEY = os.getenv("ROAM_API_KEY")
+
 # 建立正規表示式，偵測是否為 mm-dd-yyyy 格式
 date_pattern = re.compile(r"^\d{1,2}-\d{1,2}-\d{4}$")
 
 
 def main():
-    # 2. 讀取本地 pages.json
-    with open("pages.json", "r", encoding="utf-8") as f:
-        data = json.load(f)
-
+    # 2. 從 Roam Research API 取得所有頁面資料
+    url = f"{ROAM_API_BASE_URL}/api/graph/{ROAM_API_GRAPH}/q"
+    headers = {
+        "Content-Type": "application/json",
+        "X-Authorization": f"Bearer {ROAM_API_KEY}",
+        "Accept": "*/*",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "User-Agent": "PostmanRuntime/7.43.0",
+    }
+    payload = {
+        "query": (
+            "[:find ?uid ?page-title " ":where [?id :node/title ?page-title][?id :block/uid ?uid]]"
+        ),
+        "args": [],
+    }
+    response = requests.post(url, headers=headers, json=payload)
+    if response.status_code != 200:
+        print(f"API 呼叫失敗：{response.status_code} - {response.text}")
+        return
+    data = response.json()
     # 假設結構為 { "result": [ [uid, page_title], [uid, page_title], ... ] }
     all_pages = data.get("result", [])
+    # 可選：將結果儲存到 pages.json 作為備份
+    with open("pages.json", "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
 
     # 3. 過濾 UID 是日期格式的頁面
     filtered_pages = [(uid, title) for (uid, title) in all_pages if not date_pattern.match(uid)]
