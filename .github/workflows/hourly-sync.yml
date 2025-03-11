@@ -1,0 +1,38 @@
+name: Hourly Roam-Supabase Sync
+
+on:
+  schedule:
+    # Run every hour
+    - cron: '0 * * * *'
+  # Allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        export PATH="/github/home/.cargo/bin:$PATH"
+        uv pip install -e .
+
+    - name: Run sync script
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        ROAM_API_BASE_URL: ${{ secrets.ROAM_API_BASE_URL }}
+        ROAM_API_GRAPH: ${{ secrets.ROAM_API_GRAPH }}
+        ROAM_API_KEY: ${{ secrets.ROAM_API_KEY }}
+      run: |
+        python main.py
