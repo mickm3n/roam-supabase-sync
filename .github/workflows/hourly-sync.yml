@@ -23,8 +23,9 @@ jobs:
     - name: Install dependencies
       run: |
         curl -LsSf https://astral.sh/uv/install.sh | sh
-        export PATH="/github/home/.cargo/bin:$PATH"
-        uv pip install -e .
+        export PATH="/home/runner/.local/bin:$PATH"
+        uv venv
+        uv pip install -e . --system
 
     - name: Run sync script
       env:
